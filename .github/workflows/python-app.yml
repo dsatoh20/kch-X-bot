@@ -4,7 +4,7 @@ on:
   push:
     branches: 
       - main
-  shedule:
+  schedule::
     - cron: '0 09 * * *' # 09 - 15 = 18時に投稿
   workflow_dispatch:
 

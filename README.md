@@ -52,3 +52,6 @@ image_url = selected_club.profile_image_url
 ## 開発
 ### 環境変数
 .envファイルを作成。
+
+## 参考
+- りみころ. [github actionsで無料で定期実行してみよう！](https://zenn.dev/rimikoro/articles/9193295154b659). Zenn. Accessed 2026/03/14
