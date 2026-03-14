@@ -6,7 +6,7 @@ on:
     - cron: '0 09 * * *' # 09 - 15 = 18時に投稿
 
 jobs:
-  notify:
+  tweet:
     runs-on: ubuntu-latest # osの選択
     steps:
       - name: Checkout repo
