@@ -3,7 +3,7 @@ name: Circle Intro X-bot
 on:
   workflow_dispatch:
   # schedule:
-    # - cron: '0 09 * * *' # 09 - 15 = 18時に投稿
+  #   - cron: '0 9 * * *' # 毎日09:00(UTC)に実行 / 日本時間(JST)では18:00
 
 jobs:
   tweet:
