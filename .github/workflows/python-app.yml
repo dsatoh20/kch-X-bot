@@ -2,8 +2,8 @@ name: Circle Intro X-bot
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 13 * * *' # 09 - 15 = 18時に投稿
+  # schedule:
+    # - cron: '0 09 * * *' # 09 - 15 = 18時に投稿
 
 jobs:
   tweet:
