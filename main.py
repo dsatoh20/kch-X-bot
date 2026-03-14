@@ -112,10 +112,9 @@ def get_random_club_from_readme_flow():
 
 def create_post_text(club_data):
     """投稿用のテキストを生成する"""
-    today_str = datetime.now().strftime('%Y/%m/%d')
 
     # READMEのテンプレートを基にテキストを生成
-    text = f"""--サークル紹介 {today_str}--
+    text = f"""--サークル紹介--
 
 【{club_data['name']}】
 {club_data['description']}
