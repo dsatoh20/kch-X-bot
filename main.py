@@ -2,7 +2,7 @@ import os
 import requests
 import io
 import random
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from postgrest import APIError
@@ -18,6 +18,8 @@ TWITTER_CONSUMER_KEY = os.environ.get("TWITTER_CONSUMER_KEY")
 TWITTER_CONSUMER_SECRET = os.environ.get("TWITTER_CONSUMER_SECRET")
 TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
+BASE_URL = os.environ.get("BASE_URL") # 金沢サークルハブのサイトURL
+
 
 # --- クライアントの初期化 ---
 try:
@@ -111,9 +113,13 @@ def get_random_club_from_readme_flow():
 
 def create_post_text(club_data):
     """投稿用のテキストを生成する"""
-    # テスト用に現在時刻を追加し、毎回ユニークな投稿にする
-    # これにより、Twitterの重複投稿フィルターによるエラーを回避する
-    timestamp = datetime.now().strftime('%H:%M:%S')
+    # JST (UTC+9) のタイムゾーンを定義
+    jst_tz = timezone(timedelta(hours=9))
+    # 現在のJSTでの日付を取得し、重複投稿を避ける
+    date_str = datetime.now(jst_tz).strftime('%Y-%m-%d')
+
+    # 投稿用のURLを生成
+    club_url = f"{BASE_URL}/club/{club_data['slug']}"
 
     # READMEのテンプレートを基にテキストを生成
     text = f"""--サークル紹介--
@@ -122,11 +128,11 @@ def create_post_text(club_data):
 {club_data['description']}
 
 詳細はこちらをチェック！
-https://kanazawa-circle-hub.vercel.app/club/{club_data['slug']}
+{club_url}
 
 #金沢大学 #サークル #春から金大
 
-({timestamp})
+({date_str})
 """
     return text
 
