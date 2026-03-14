@@ -111,6 +111,9 @@ def get_random_club_from_readme_flow():
 
 def create_post_text(club_data):
     """投稿用のテキストを生成する"""
+    # テスト用に現在時刻を追加し、毎回ユニークな投稿にする
+    # これにより、Twitterの重複投稿フィルターによるエラーを回避する
+    timestamp = datetime.now().strftime('%H:%M:%S')
 
     # READMEのテンプレートを基にテキストを生成
     text = f"""--サークル紹介--
@@ -122,6 +125,8 @@ def create_post_text(club_data):
 https://kanazawa-circle-hub.vercel.app/club/{club_data['slug']}
 
 #金沢大学 #サークル #春から金大
+
+({timestamp})
 """
     return text
 
