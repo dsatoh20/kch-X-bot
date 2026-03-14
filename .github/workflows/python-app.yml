@@ -20,6 +20,20 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt # pip install
 
+      - name: Verify Secrets Availability
+        run: |
+          echo "Verifying that secrets are loaded..."
+          echo "SUPABASE_URL is set: ${{ secrets.SUPABASE_URL != '' }}"
+          echo "TWITTER_CONSUMER_KEY is set: ${{ secrets.TWITTER_CONSUMER_KEY != '' }}"
+          echo "TWITTER_ACCESS_TOKEN is set: ${{ secrets.TWITTER_ACCESS_TOKEN != '' }}"
+          echo "Verification complete."
+
+      - name: Confirm Access Token Content
+        run: |
+          echo "Confirming the content of the Twitter Access Token..."
+          ACCESS_TOKEN="${{ secrets.TWITTER_ACCESS_TOKEN }}"
+          echo "Last 4 chars of Access Token: ${ACCESS_TOKEN: -4}"
+
       - name: Run the bot
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
