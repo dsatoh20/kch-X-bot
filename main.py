@@ -115,8 +115,8 @@ def create_post_text(club_data):
     """投稿用のテキストを生成する"""
     # JST (UTC+9) のタイムゾーンを定義
     jst_tz = timezone(timedelta(hours=9))
-    # 現在のJSTでの日付を取得し、重複投稿を避ける
-    date_str = datetime.now(jst_tz).strftime('%Y-%m-%d')
+    # 現在のJSTでの日時を取得し、重複投稿を避けるために時刻まで含める
+    timestamp_str = datetime.now(jst_tz).strftime('%Y-%m-%d %H:%M:%S')
 
     # 投稿用のURLを生成
     club_url = f"{BASE_URL}/club/{club_data['slug']}"
@@ -132,7 +132,7 @@ def create_post_text(club_data):
 
 #金沢大学 #サークル #春から金大
 
-({date_str})
+({timestamp_str})
 """
     return text
 
