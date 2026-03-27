@@ -172,15 +172,19 @@ def post_to_x(text, image_url):
             image_data = io.BytesIO(response.content)
             # Tweepy v1.1のmedia_uploadはファイル名が必須引数だが、
             # file引数にファイルライクオブジェクトを渡せる
+            print("メディアをアップロード中...")
             media = api_v1.media_upload(filename="image.jpg", file=image_data)
             media_id = media.media_id
+            print(f"メディアアップロード成功 (media_id: {media_id})")
 
         # ツイートを投稿
+        print("ツイートを投稿中...")
         client_v2.create_tweet(text=text, media_ids=[media_id] if media_id else None)
         print("ツイートの投稿に成功しました。")
 
     except tweepy.errors.Forbidden as e:
         print(f"エラー: Twitter APIへの投稿が拒否されました(403 Forbidden)。 - {e}")
+        print(f"詳細: {e.api_codes} / {e.api_messages}")
         print("ヒント: Twitter Developer Appのパーミッションが'Read and Write'になっているか、APIキー/トークンが正しいか確認してください。")
 
     except requests.exceptions.RequestException as e:
