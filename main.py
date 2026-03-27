@@ -26,14 +26,7 @@ try:
     # Supabaseクライアント
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-    # Twitter API v2クライアント (ツイート作成用)
-    client_v2 = tweepy.Client(
-        consumer_key=TWITTER_CONSUMER_KEY,
-        consumer_secret=TWITTER_CONSUMER_SECRET,
-        access_token=TWITTER_ACCESS_TOKEN,
-        access_token_secret=TWITTER_ACCESS_TOKEN_SECRET,
-    )
-    # Twitter API v1.1クライアント (メディアアップロード用)
+    # Twitter API v1.1クライアント (ツイート投稿・メディアアップロード用)
     auth_v1 = tweepy.OAuth1UserHandler(
         consumer_key=TWITTER_CONSUMER_KEY,
         consumer_secret=TWITTER_CONSUMER_SECRET,
@@ -179,19 +172,17 @@ def post_to_x(text, image_url):
 
         # ツイートを投稿
         print("ツイートを投稿中...")
-        client_v2.create_tweet(text=text, media_ids=[media_id] if media_id else None)
+        api_v1.update_status(status=text, media_ids=[media_id] if media_id else None)
         print("ツイートの投稿に成功しました。")
 
     except tweepy.errors.Forbidden as e:
         print(f"エラー: Twitter APIへの投稿が拒否されました(403 Forbidden)。 - {e}")
-        print(f"詳細: {e.api_codes} / {e.api_messages}")
-        print("ヒント: Twitter Developer Appのパーミッションが'Read and Write'になっているか、APIキー/トークンが正しいか確認してください。")
 
     except requests.exceptions.RequestException as e:
         print(f"警告: 画像のダウンロードに失敗しました。テキストのみで投稿を試みます。 - {e}")
         try:
             # 画像なしでテキストのみ投稿
-            client_v2.create_tweet(text=text)
+            api_v1.update_status(status=text)
             print("テキストのみでのツイート投稿に成功しました。")
         except Exception as e_tweet:
             print(f"エラー: テキストのみのツイート投稿にも失敗しました。 - {e_tweet}")
