@@ -121,11 +121,33 @@ def create_post_text(club_data):
     # 投稿用のURLを生成
     club_url = f"{BASE_URL}/club/{club_data['slug']}"
 
+    # Xの文字数制限: URLはt.coで23文字にカウントされる
+    TWEET_LIMIT = 280
+    URL_LENGTH = 23
+
+    # descriptionを除いた固定部分の長さを計算
+    fixed_text = (
+        f"--サークル紹介--\n\n"
+        f"【{club_data['name']}】\n"
+        f"\n"
+        f"詳細はこちらをチェック！\n"
+        f"\n\n"
+        f"#金沢大学 #サークル #春から金大\n\n"
+        f"({timestamp_str})\n"
+    )
+    fixed_len = len(fixed_text) + URL_LENGTH
+    description_limit = TWEET_LIMIT - fixed_len
+
+    description = club_data['description']
+    if len(description) > description_limit:
+        description = description[:description_limit - 1] + "…"
+        print(f"警告: descriptionを{description_limit}文字に切り詰めました。")
+
     # READMEのテンプレートを基にテキストを生成
     text = f"""--サークル紹介--
 
 【{club_data['name']}】
-{club_data['description']}
+{description}
 
 詳細はこちらをチェック！
 {club_url}
