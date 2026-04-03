@@ -123,7 +123,7 @@ def create_post_text(club_data):
 
     # Xの文字数制限: URLはt.coで23文字にカウントされる
     TWEET_LIMIT = 280
-    URL_LENGTH = 23
+    # URL_LENGTH = 23
 
     # descriptionを除いた固定部分の長さを計算
     fixed_text = (
@@ -135,7 +135,8 @@ def create_post_text(club_data):
         f"#金沢大学 #サークル #春から金大\n\n"
         f"({timestamp_str})\n"
     )
-    fixed_len = len(fixed_text) + URL_LENGTH
+    # fixed_len = len(fixed_text) + URL_LENGTH
+    fixed_len = len(fixed_text)
     description_limit = TWEET_LIMIT - fixed_len
 
     description = club_data['description']
@@ -149,8 +150,7 @@ def create_post_text(club_data):
 【{club_data['name']}】
 {description}
 
-詳細はこちらをチェック！
-{club_url}
+詳細はブラウザからチェック！
 
 #金沢大学 #サークル #春から金大
 
