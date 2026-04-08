@@ -140,7 +140,9 @@ def create_post_text(club_data):
     description_limit = TWEET_LIMIT - fixed_len
 
     description = club_data['description']
-    if len(description) > description_limit:
+    if not description:
+        description = "(自己紹介文がありません)"
+    elif len(description) > description_limit:
         description = description[:description_limit - 1] + "…"
         print(f"警告: descriptionを{description_limit}文字に切り詰めました。")
 
