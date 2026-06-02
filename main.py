@@ -1,220 +1,141 @@
 import os
-import requests
 import io
 import random
+import requests
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from postgrest import APIError
 import tweepy
 
-# .envファイルから環境変数を読み込む
 load_dotenv()
 
-# --- 環境変数 (READMEの「開発」セクションを参照) ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_ANON_KEY")
 TWITTER_CONSUMER_KEY = os.environ.get("TWITTER_CONSUMER_KEY")
 TWITTER_CONSUMER_SECRET = os.environ.get("TWITTER_CONSUMER_SECRET")
 TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
-BASE_URL = os.environ.get("BASE_URL") # 金沢サークルハブのサイトURL
+BASE_URL = os.environ.get("BASE_URL")
 
+JST = timezone(timedelta(hours=9))
+TWEET_LIMIT = 280
 
-# --- クライアントの初期化 ---
 try:
-    # Supabaseクライアント
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-    # Twitter API v2クライアント (ツイート作成用)
     client_v2 = tweepy.Client(
         consumer_key=TWITTER_CONSUMER_KEY,
         consumer_secret=TWITTER_CONSUMER_SECRET,
         access_token=TWITTER_ACCESS_TOKEN,
         access_token_secret=TWITTER_ACCESS_TOKEN_SECRET,
     )
-    # Twitter API v1.1クライアント (メディアアップロード用)
-    auth_v1 = tweepy.OAuth1UserHandler(
+    api_v1 = tweepy.API(tweepy.OAuth1UserHandler(
         consumer_key=TWITTER_CONSUMER_KEY,
         consumer_secret=TWITTER_CONSUMER_SECRET,
         access_token=TWITTER_ACCESS_TOKEN,
         access_token_secret=TWITTER_ACCESS_TOKEN_SECRET,
-    )
-    api_v1 = tweepy.API(auth_v1)
-
+    ))
 except Exception as e:
-    print(f"エラー: 環境変数の設定またはクライアントの初期化に失敗しました。 - {e}")
+    print(f"エラー: クライアントの初期化に失敗しました。 - {e}")
     exit()
 
 
-def get_random_club_from_readme_flow():
-    """
-    README.mdに記載されたフローに従い、サークル情報を取得・結合する。
-    NOTE: この方法は複数回のAPI呼び出しとクライアントサイドでのデータ処理を
-          行うため、データ量が増えると非効率になる可能性があります。
-          DB側でJOINとランダム選択を行うRPC関数を実装する方が効率的です。
-    """
+def get_random_club():
     try:
-        # 1 & 2. clubsとis_verifiedテーブルからデータを取得
-        print("DBからサークルリストと認証済みIDを取得します...")
         clubs_response = supabase.table('clubs').select('id, name, slug, profile_image_url').execute()
         verified_response = supabase.table('is_verified').select('club_id').execute()
 
         if not clubs_response.data or not verified_response.data:
-            print("エラー: 'clubs'または'is_verified'テーブルからデータを取得できませんでした。")
+            print("エラー: DBからデータを取得できませんでした。")
             return None
 
-        all_clubs = {club['id']: club for club in clubs_response.data}
-        verified_club_ids = {item['club_id'] for item in verified_response.data}
+        verified_ids = {item['club_id'] for item in verified_response.data}
+        verified_clubs = [c for c in clubs_response.data if c['id'] in verified_ids]
 
-        # 3. 認証済みサークルに絞り込む
-        verified_clubs_list = [
-            club for club_id, club in all_clubs.items() if club_id in verified_club_ids
-        ]
-
-        if not verified_clubs_list:
-            print("エラー: 処理対象の認証済みサークルが見つかりませんでした。")
+        if not verified_clubs:
+            print("エラー: 認証済みサークルが見つかりませんでした。")
             return None
 
-        # 4. ランダムに1つ選択
-        selected_club = random.choice(verified_clubs_list)
-        selected_club_id = selected_club['id']
-        print(f"ランダムにサークルを選択しました: {selected_club['name']} (ID: {selected_club_id})")
+        club = random.choice(verified_clubs)
+        print(f"選択: {club['name']} (ID: {club['id']})")
 
-        # 5. club_infosテーブルから詳細情報を取得
-        print("サークルの詳細情報を取得します...")
-        info_response = supabase.table('club_infos').select('description').eq('club_id', selected_club_id).limit(1).single().execute()
+        info_response = (
+            supabase.table('club_infos')
+            .select('description')
+            .eq('club_id', club['id'])
+            .limit(1)
+            .single()
+            .execute()
+        )
+        description = (info_response.data or {}).get('description') or "(自己紹介文がありません)"
 
-        # 6. 取得した情報を結合
-        description = "(詳細情報がありません)"
-        if info_response.data and 'description' in info_response.data:
-            description = info_response.data['description']
-        else:
-            print(f"警告: club_id {selected_club_id} の詳細情報(description)が見つかりませんでした。")
-
-        # 最終的な辞書を作成して返す
-        final_club_data = {
-            "name": selected_club['name'],
-            "slug": selected_club['slug'],
-            "profile_image_url": selected_club.get('profile_image_url'),
-            "description": description
+        return {
+            "name": club['name'],
+            "slug": club['slug'],
+            "profile_image_url": club.get('profile_image_url'),
+            "description": description,
         }
-        return final_club_data
 
     except APIError as e:
-        print(f"エラー: Supabase APIとの通信でエラーが発生しました。 - {e}")
-        print("ヒント: APIキーが正しいか、テーブルのRow Level Security(RLS)設定で'anon'キーからのSELECTが許可されているか確認してください。")
+        print(f"エラー: Supabase API - {e}")
         return None
     except Exception as e:
-        # ネットワークエラーや予期せぬエラー
-        print(f"エラー: サークル情報の取得・結合処理中に予期せぬエラーが発生しました。 - {e}")
+        print(f"エラー: サークル情報の取得中に予期せぬエラーが発生しました。 - {e}")
         return None
 
 
 def create_post_text(club_data):
-    """投稿用のテキストを生成する"""
-    # JST (UTC+9) のタイムゾーンを定義
-    jst_tz = timezone(timedelta(hours=9))
-    # 現在のJSTでの日時を取得し、重複投稿を避けるために時刻まで含める
-    timestamp_str = datetime.now(jst_tz).strftime('%Y-%m-%d %H:%M:%S')
+    timestamp_str = datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')
 
-    # 投稿用のURLを生成
-    club_url = f"{BASE_URL}/club/{club_data['slug']}"
-
-    # Xの文字数制限: URLはt.coで23文字にカウントされる
-    TWEET_LIMIT = 280
-    # URL_LENGTH = 23
-
-    # descriptionを除いた固定部分の長さを計算
-    fixed_text = (
-        f"--サークル紹介--\n\n"
-        f"【{club_data['name']}】\n"
-        f"\n"
-        f"詳細はこちらをチェック！\n"
-        f"\n\n"
-        f"#金沢大学 #サークル #春から金大\n\n"
-        f"({timestamp_str})\n"
-    )
-    # fixed_len = len(fixed_text) + URL_LENGTH
-    fixed_len = len(fixed_text)
-    description_limit = TWEET_LIMIT - fixed_len
+    header = f"--サークル紹介--\n\n【{club_data['name']}】\n"
+    footer = f"\n詳細はブラウザからチェック！\n\n#金沢大学 #サークル #春から金大\n\n({timestamp_str})\n"
+    description_limit = TWEET_LIMIT - len(header) - len(footer)
 
     description = club_data['description']
-    if not description:
-        description = "(自己紹介文がありません)"
-    elif len(description) > description_limit:
+    if len(description) > description_limit:
         description = description[:description_limit - 1] + "…"
         print(f"警告: descriptionを{description_limit}文字に切り詰めました。")
 
-    # READMEのテンプレートを基にテキストを生成
-    text = f"""--サークル紹介--
-
-【{club_data['name']}】
-{description}
-
-詳細はブラウザからチェック！
-
-#金沢大学 #サークル #春から金大
-
-({timestamp_str})
-"""
-    return text
+    return header + description + footer
 
 
 def post_to_x(text, image_url):
-    """テキストと画像をXに投稿する"""
     media_id = None
     try:
-        # 画像URLがあれば画像をダウンロードしてアップロード
         if image_url:
             response = requests.get(image_url, stream=True)
-            response.raise_for_status()  # HTTPエラーがあれば例外を発生
-
-            # 画像データをメモリ上でファイルのように扱う
-            image_data = io.BytesIO(response.content)
-            # Tweepy v1.1のmedia_uploadはファイル名が必須引数だが、
-            # file引数にファイルライクオブジェクトを渡せる
+            response.raise_for_status()
             print("メディアをアップロード中...")
-            media = api_v1.media_upload(filename="image.jpg", file=image_data)
+            media = api_v1.media_upload(filename="image.jpg", file=io.BytesIO(response.content))
             media_id = media.media_id
             print(f"メディアアップロード成功 (media_id: {media_id})")
 
-        # ツイートを投稿
         print("ツイートを投稿中...")
         client_v2.create_tweet(text=text, media_ids=[media_id] if media_id else None)
         print("ツイートの投稿に成功しました。")
 
     except tweepy.errors.Forbidden as e:
-        print(f"エラー: Twitter APIへの投稿が拒否されました(403 Forbidden)。 - {e}")
-
+        print(f"エラー: 投稿が拒否されました(403 Forbidden)。 - {e}")
     except requests.exceptions.RequestException as e:
-        print(f"警告: 画像のダウンロードに失敗しました。テキストのみで投稿を試みます。 - {e}")
+        print(f"警告: 画像のダウンロードに失敗しました。テキストのみで投稿します。 - {e}")
         try:
-            # 画像なしでテキストのみ投稿
             client_v2.create_tweet(text=text)
-            print("テキストのみでのツイート投稿に成功しました。")
+            print("テキストのみでの投稿に成功しました。")
         except Exception as e_tweet:
-            print(f"エラー: テキストのみのツイート投稿にも失敗しました。 - {e_tweet}")
+            print(f"エラー: テキストのみの投稿にも失敗しました。 - {e_tweet}")
     except Exception as e:
         print(f"エラー: ツイートの投稿中に予期せぬエラーが発生しました。 - {e}")
 
 
 def main():
-    """メイン処理"""
     print(f"処理を開始します... ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
 
-    # 1. ランダムなサークルを取得 (READMEのフローに従う)
-    selected_club = get_random_club_from_readme_flow()
-    if not selected_club:
+    club = get_random_club()
+    if not club:
         print("処理を終了します。")
         return
 
-    # 2. 投稿文を作成
-    post_text = create_post_text(selected_club)
-
-    # 3. Xに投稿
-    post_to_x(post_text, selected_club.get('profile_image_url'))
-
+    post_to_x(create_post_text(club), club.get('profile_image_url'))
     print("処理が完了しました。")
 
 
